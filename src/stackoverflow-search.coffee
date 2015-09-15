@@ -2,21 +2,36 @@
 #   Search on Stack Overflow via Hubot.
 #
 # Configuration:
-#   LIST_OF_ENV_VARS_TO_SET
+#   HUBOT_STACK_OVERFLOW_API_KEY - Obtained from http://stackapps.com/apps/oauth/register
 #
 # Commands:
-#   hubot hello - <what the respond trigger does>
-#   orly - <what the hear trigger does>
-#
-# Notes:
-#   <optional notes required for the script>
-#
-# Author:
-#   Taylan Aydinli <taylanaydinli@gmail.com>
+#   hubot so me <query> - Searches Stack Overflow for the query and returns top 3 results.
 
 module.exports = (robot) ->
-  robot.respond /hello/, (res) ->
-    res.reply "hello!"
+  
+  robot.respond /(?:stackoverflow|so)(?: me)? (.*)/i, (res) ->
+    unless process.env.HUBOT_STACK_OVERFLOW_API_KEY
+      return msg.send "You must configure the HUBOT_STACK_OVERFLOW_API_KEY environment variable"
+    query = msg.match[1]
+    api_key = process.env.HUBOT_STACK_OVERFLOW_API_KEY
+    url = "https://api.stackexchange.com/2.2/search/advanced?key=#{api_key}&pagesize=3&order=desc&sort=relevance&q=#{query}&site=stackoverflow&filter=default"
+    robot.http("https://api.stackexchange.com/2.2/search/advanced")
+      .query({
+        key: api_key,
+        pagesize: 3,
+        order: 'desc',
+        sort: 'relevance',
+        site: 'stackoverflow',
+        filter: 'default',
+        q: query
+      })
+      .get() (err, res, body) ->
+        answers = JSON.parse(body).items
 
-  robot.hear /orly/, ->
-    res.send "yarly"
+        unless answers? && answers.length > 0
+          return msg.send "Sorry. No results for \"#{query}\"."
+
+        video  = msg.random videos
+        msg.send "https://www.youtube.com/watch?v=#{video.id.videoId}"
+
+
